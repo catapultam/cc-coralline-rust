@@ -25,6 +25,7 @@ mod config;
 mod float;
 mod git;
 mod json;
+mod proxy_usage;
 mod render;
 mod subagent;
 
@@ -58,6 +59,11 @@ fn main() {
     if args.len() >= 3 && args[1] == "--git-refresh" {
         let coralline_dir = format!("{}/.claude/coralline", home_dir());
         git::refresh(&args[2], &coralline_dir);
+        return;
+    }
+    if args.len() >= 3 && args[1] == "--usage-refresh" {
+        let coralline_dir = format!("{}/.claude/coralline", home_dir());
+        proxy_usage::refresh(&args[2], &coralline_dir);
         return;
     }
     if args.len() >= 2 && args[1] == "--float-carrier" {
@@ -116,7 +122,10 @@ fn render_all(j: Option<&Json>, home: &str, coralline_dir: &str) -> String {
         None => return String::new(),
     };
     let cfg = Config::load(home);
-    let p = extract(j);
+    let mut p = extract(j);
+    // Behind a gateway Claude Code sends no rate_limits; read pooled usage
+    // from the gateway instead (no-op otherwise).
+    proxy_usage::enrich(&mut p, j, coralline_dir);
 
     // Float segments also drive git gathering when VL_FLOAT is on, matching
     // upstream's `_SEG_SCAN` (so a `git`/`project` float segment has data).
