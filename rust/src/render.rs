@@ -649,6 +649,12 @@ impl<'a> Ctx<'a> {
                 self.seg_limit(segs, "5h", pv, &rs, &cfg.bg_5h)
             }
             "limit7d" => {
+                if !p.gw_weekly.is_empty() {
+                    for (name, pct, rst) in &p.gw_weekly {
+                        self.seg_limit(segs, &format!("7d ({name})"), Some(*pct), rst, &cfg.bg_7d);
+                    }
+                    return;
+                }
                 let (mut pv, mut rs) = (p.wd_pct, p.wd_rst.clone());
                 if cfg.limit_sync {
                     if let Some((pct, rst)) =

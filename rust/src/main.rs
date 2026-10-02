@@ -52,6 +52,9 @@ pub struct Payload {
     pub out_style: String,
     pub dur_ms: i64,
     pub effort: String,
+    /// Weekly usage per provider from a gateway: (provider, percent, reset).
+    /// When set, the 7d segment shows one entry per provider.
+    pub gw_weekly: Vec<(String, f64, String)>,
 }
 
 fn main() {
@@ -217,6 +220,7 @@ fn extract(j: &Json) -> Payload {
         out_style: s(&["output_style", "name"]),
         dur_ms: i(&["cost", "total_duration_ms"]),
         effort: s(&["effort", "level"]),
+        gw_weekly: Vec::new(),
     }
 }
 

@@ -93,17 +93,30 @@ pub fn enrich(p: &mut Payload, j: &Json, coralline_dir: &str) {
     let Some(usage) = std::fs::read_to_string(&cache).ok().and_then(|s| json::parse(&s)) else {
         return;
     };
-    let window = |name: &str| -> (Option<f64>, String, String) {
-        let pct = usage.path(&[name, "used_percentage"]).and_then(|v| v.as_f64());
-        let rst = usage
-            .path(&[name, "resets_at"])
-            .and_then(|v| v.as_f64())
-            .map(fmt_num)
-            .unwrap_or_default();
-        (pct, pct.map(fmt_num).unwrap_or_default(), rst)
+    let window = |w: &Json| -> (Option<f64>, String) {
+        let pct = w.path(&["used_percentage"]).and_then(|v| v.as_f64());
+        let rst = w.path(&["resets_at"]).and_then(|v| v.as_f64()).map(fmt_num).unwrap_or_default();
+        (pct, rst)
     };
-    (p.fh_pct, p.fh_pct_raw, p.fh_rst) = window("five_hour");
-    (p.wd_pct, p.wd_pct_raw, p.wd_rst) = window("seven_day");
+    // 5h is left empty on purpose: the gateway moves a session to another
+    // account when its 5h window fills, so a pooled 5h figure says little.
+    // The current model's weekly pool feeds burn and limit sampling.
+    if let Some(w) = usage.path(&["seven_day"]) {
+        let (pct, rst) = window(w);
+        p.wd_pct = pct;
+        p.wd_pct_raw = pct.map(fmt_num).unwrap_or_default();
+        p.wd_rst = rst;
+    }
+    if let Some(Json::Arr(list)) = usage.path(&["seven_day_by_provider"]) {
+        for entry in list {
+            let name = entry.path(&["provider"]).and_then(|v| v.as_str()).unwrap_or("");
+            if let (false, Some(w)) = (name.is_empty(), entry.path(&["seven_day"])) {
+                if let (Some(pct), rst) = window(w) {
+                    p.gw_weekly.push((name.to_string(), pct, rst));
+                }
+            }
+        }
+    }
 }
 
 fn spawn_refresh(model: &str) {
