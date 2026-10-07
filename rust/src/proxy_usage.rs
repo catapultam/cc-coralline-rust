@@ -21,14 +21,16 @@ const CACHE_TTL_SECS: u64 = 30;
 const LOCK_STALE_SECS: u64 = 60;
 const NET_TIMEOUT: Duration = Duration::from_secs(5);
 
-struct Gateway {
-    host: String,
-    port: u16,
-    path_prefix: String,
-    token: String,
+// pub(crate): proxy_auto_mode.rs reuses the same gateway detection + fetch
+// shape for its own endpoint.
+pub(crate) struct Gateway {
+    pub(crate) host: String,
+    pub(crate) port: u16,
+    pub(crate) path_prefix: String,
+    pub(crate) token: String,
 }
 
-fn gateway() -> Option<Gateway> {
+pub(crate) fn gateway() -> Option<Gateway> {
     let base = std::env::var("ANTHROPIC_BASE_URL").ok()?;
     let rest = base.trim().strip_prefix("http://")?;
     let (authority, path) = match rest.find('/') {

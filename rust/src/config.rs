@@ -60,6 +60,10 @@ pub struct Config {
     pub node_glyph: String,
     pub py_glyph: String,
     pub runtime_probe: bool,
+    // auto-mode server-review segment (native-only; gateway-fed)
+    pub automode: bool,
+    pub bg_automode: String,
+    pub automode_glyph: String,
     // burn segment
     pub burn_window: i64,
     pub burn_glyph: String,
@@ -140,6 +144,9 @@ impl Default for Config {
             node_glyph: "\u{E718}".into(),
             py_glyph: "\u{E73C}".into(),
             runtime_probe: false,
+            automode: true,
+            bg_automode: "24".into(),
+            automode_glyph: "\u{25C9}".into(),
             burn_window: 600,
             burn_glyph: "\u{2197}".into(),
             bg_burn: "".into(), // empty → inherits bg_5h at the use site
@@ -298,6 +305,11 @@ impl Config {
             "VL_NODE_GLYPH" => self.node_glyph = v,
             "VL_PY_GLYPH" => self.py_glyph = v,
             "VL_RUNTIME_PROBE" => self.runtime_probe = v == "1",
+            // Opt-out knob (default enabled): "0" disables, anything else
+            // (including unset) leaves the segment active.
+            "VL_AUTOMODE" => self.automode = v != "0",
+            "VL_BG_AUTOMODE" => self.bg_automode = v,
+            "VL_AUTOMODE_GLYPH" => self.automode_glyph = v,
             "CORALLINE_BURN_WINDOW" => self.burn_window = v.parse().unwrap_or(self.burn_window),
             "VL_BURN_GLYPH" => self.burn_glyph = v,
             "VL_BG_BURN" => self.bg_burn = v,

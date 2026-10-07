@@ -774,6 +774,29 @@ impl<'a> Ctx<'a> {
                     format!("{} \u{3C8} {} ", self.fg_text, label),
                 );
             }
+            // Gateway-fed auto-mode server-review state (native-only
+            // extension). "server" = Anthropic's server-side classifier is
+            // still reviewing (good); "local" = the session fell back to its
+            // own billed classifier (bad — fix is to restart the session).
+            // "off"/"unknown"/missing/disabled stay hidden.
+            "automode" => {
+                if !cfg.automode {
+                    return;
+                }
+                match p.automode.as_deref() {
+                    Some("server") => self.push(
+                        segs,
+                        &cfg.bg_automode,
+                        format!("{} {} auto: srv ", self.fg_ok, cfg.automode_glyph),
+                    ),
+                    Some("local") => self.push(
+                        segs,
+                        &cfg.bg_automode,
+                        format!("{} {} auto: local ", self.fg_hot, cfg.automode_glyph),
+                    ),
+                    _ => {}
+                }
+            }
             "stash" => {
                 if self.git.branch.is_empty() {
                     return;

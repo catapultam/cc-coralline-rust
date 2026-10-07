@@ -25,6 +25,7 @@ mod config;
 mod float;
 mod git;
 mod json;
+mod proxy_auto_mode;
 mod proxy_usage;
 mod render;
 mod subagent;
@@ -55,6 +56,9 @@ pub struct Payload {
     /// Weekly usage per provider from a gateway: (provider, percent, reset).
     /// When set, the 7d segment shows one entry per provider.
     pub gw_weekly: Vec<(String, f64, String)>,
+    /// Auto-mode server-review state from a gateway: "server" or "local".
+    /// None (off/unknown/missing/no gateway) hides the segment.
+    pub automode: Option<String>,
 }
 
 fn main() {
@@ -67,6 +71,11 @@ fn main() {
     if args.len() >= 3 && args[1] == "--usage-refresh" {
         let coralline_dir = format!("{}/.claude/coralline", home_dir());
         proxy_usage::refresh(&args[2], &coralline_dir);
+        return;
+    }
+    if args.len() >= 3 && args[1] == "--auto-mode-refresh" {
+        let coralline_dir = format!("{}/.claude/coralline", home_dir());
+        proxy_auto_mode::refresh(&args[2], &coralline_dir);
         return;
     }
     if args.len() >= 2 && args[1] == "--float-carrier" {
@@ -129,6 +138,12 @@ fn render_all(j: Option<&Json>, home: &str, coralline_dir: &str) -> String {
     // Behind a gateway Claude Code sends no rate_limits; read pooled usage
     // from the gateway instead (no-op otherwise).
     proxy_usage::enrich(&mut p, j, coralline_dir);
+    // Same gateway-cache shape, for the auto-mode server-review state. Gated
+    // on the config knob so a disabled segment does no network/cache work.
+    if cfg.automode {
+        let session = j.path(&["session_id"]).and_then(|v| v.as_str()).unwrap_or("");
+        proxy_auto_mode::enrich(&mut p, session, coralline_dir);
+    }
 
     // Float segments also drive git gathering when VL_FLOAT is on, matching
     // upstream's `_SEG_SCAN` (so a `git`/`project` float segment has data).
@@ -221,6 +236,7 @@ fn extract(j: &Json) -> Payload {
         dur_ms: i(&["cost", "total_duration_ms"]),
         effort: s(&["effort", "level"]),
         gw_weekly: Vec::new(),
+        automode: None,
     }
 }
 
